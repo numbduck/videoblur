@@ -2,22 +2,27 @@ import React, { useEffect, useRef, useState } from "react";
 
 import { Layer, Rect, Stage, Transformer } from "react-konva";
 
-import samplevid from "../assets/fightafighti.mp4";
+import samplevid from "../assets/cat.mp4";
 
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
 
 import "@tensorflow/tfjs";
+import '../components/videoComponent.css'
 
 const VideoWithBoundingBox = () => {
+  // reference to video element
   const videoRef = useRef(null);
 
+  // reference to stage set for bounding box
   const stageRef = useRef(null);
 
+  // reference to custom bounding box selected by user
   const rectRef = useRef(null);
 
-  const overlayRef = useRef(null);
+  // dimensions of parent div element
+  const [dimensions, setDimensions] = useState({ width: 1280, height: 720 });
 
-  const [dimensions, setDimensions] = useState({ width: 640, height: 360 });
+  // location of prediction
   const [objectDescription, setObjectDescription] = useState({
     left: 0,
     top: 0,
@@ -25,17 +30,28 @@ const VideoWithBoundingBox = () => {
     height: 0,
   });
 
+  // interval between each ml model call
   const [detectionInterval, setDetectionInterval] = useState([]);
+
 
   const [createBbox, setCreateBbox] = useState(false);
 
+  // predicions data coming from tensorflow model
   const [predictions, setPredictions] = useState([]);
 
-  const [boxCenter, setBoxCenter] = useState();
+  // bounding box center
+  const [boxCenter, setBoxCenter] = useState({
+    xBboxCenter: 75,
+
+    yBboxCenter: 75,
+  });
 
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-  const [leastDiff, setLeastDiff] = useState({ distance: 10000, index: null });
+
+  // least diff between bounding box center an object, to find out about the object wheich user selected.
+  const [leastDiff, setLeastDiff] = useState({ distance: 10000, index: null, type: null });
+
 
   const [rectProps, setRectProps] = useState({
     x: 50,
@@ -55,6 +71,7 @@ const VideoWithBoundingBox = () => {
 
   // console.log("pre", predictions)
 
+  // setting dimensions when the video loads up.
   const updateDimensions = () => {
     if (videoRef.current) {
       const { offsetWidth: width, offsetHeight: height } = videoRef.current;
@@ -63,6 +80,7 @@ const VideoWithBoundingBox = () => {
     }
   };
 
+  //  function to call tensor flow model and then pushing the results to predictions state
   const predictObject = async () => {
     if (videoRef.current) {
       const model = await cocoSsd.load();
@@ -81,21 +99,23 @@ const VideoWithBoundingBox = () => {
       ]);
     }
   };
-
+  console.log("predictions", predictions)
+   
+// matching the prediction object with the selection
   useEffect(() => {
-    const tempObj = predictions?.map((each) => each?.[leastDiff?.index]?.bbox);
+    const matchedobject = predictions?.[predictions?.length - 1]?.filter((each, index) => each?.class == leastDiff?.type || index == leastDiff?.index)
+    // console.log(matchedobject, "matchobject")
+    // const tempObj = predictions?.map((each) => each?.[leastDiff?.index]?.bbox);
 
-    console.log("tempObj", tempObj);
-    const temp2Obj = tempObj[tempObj?.length - 1];
-    // setObjectDescription(tempObj);
+    // const temp2Obj = tempObj[tempObj?.length - 1];
     setObjectDescription({
-      left: temp2Obj?.[0],
-      top: temp2Obj?.[1],
-      width: temp2Obj?.[2],
-      height: temp2Obj?.[3],
+      left: matchedobject?.[0]?.bbox?.[0],
+      top: matchedobject?.[0]?.bbox?.[1],
+      width: matchedobject?.[0]?.bbox?.[2],
+      height: matchedobject?.[0]?.bbox?.[3],
     });
-    console.log(objectDescription, "Temp Objecct dispplay");
-    console.log("predictionsModel 1", predictions, videoRef);
+    // console.log(objectDescription, "Temp Objecct dispplay");
+    // console.log("predictionsModel 1", predictions, videoRef);
   }, [predictions]);
 
   useEffect(() => {
@@ -159,6 +179,8 @@ const VideoWithBoundingBox = () => {
   //     return () => clearInterval(detectionInterval);
 
   // }, []);
+
+  // handle resizing and dragging  selection box
 
   const handleTransformEnd = () => {
     const node = rectRef.current;
@@ -238,10 +260,11 @@ const VideoWithBoundingBox = () => {
     // });
   };
 
-  // console.log(boxCenter, "box center");
 
+  // setting selection box state true whenever we wish to create one.
   function handleCreateBoundingBox() {
     setCreateBbox(true);
+    videoRef.current?.pause()
   }
 
   function handleBoundingBoxSubmit() {
@@ -249,6 +272,7 @@ const VideoWithBoundingBox = () => {
       Math.floor(videoRef?.current?.currentTime) > 1
         ? Math.floor(videoRef?.current?.currentTime) - 1
         : 0;
+
     predictions[takeIndex]?.map((item, index) => {
       const itemCenter = {
         xBboxCenter: item?.bbox?.[0] + item?.bbox?.[2] / 2,
@@ -263,25 +287,36 @@ const VideoWithBoundingBox = () => {
       );
 
       if (distance < leastDiff?.distance) {
-        setLeastDiff({ distance: distance, index: index });
+        setLeastDiff({ distance: distance, index: index, type: item?.class });
       }
     });
+    setCreateBbox(false)
+    videoRef.current?.play()
   }
   // console.log(videoRef?.current?.currentTime,"Videoref ");
 
-  // console.log(selectedObject, "object");
 
-  console.log("leastDiff", leastDiff);
+  // console.log("leastDiff", leastDiff);
+
+  function handleClearBlur() {
+    setObjectDescription({
+      left: 0,
+      top: 0,
+      width: 0,
+      height: 0,
+    })
+    setLeastDiff({ distance: 10000, index: null, type: null })
+  }
 
   return (
     <div style={{ display: "flex" }}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
+      <div className="video-controls">
         <button onClick={() => videoRef.current.play()}>Play</button>
-
         <button onClick={() => videoRef.current.pause()}>Pause</button>
-        <button onClick={handleCreateBoundingBox}>Create bounding box</button>
-
-        <button onClick={handleBoundingBoxSubmit}>Submit</button>
+        {predictions?.length > 0 && !createBbox && <button onClick={handleCreateBoundingBox}>Create bounding box</button>}
+        {createBbox && <button onClick={() => { setCreateBbox(false); videoRef.current?.pause() }}>Clear bounding box</button>}
+        {predictions?.length > 0 && leastDiff.index === null && createBbox && <button onClick={handleBoundingBoxSubmit}>Submit and blur</button>}
+        {predictions?.length > 0 && leastDiff.index !== null && <button onClick={handleClearBlur}>Clear blur</button>}
       </div>
 
       <div style={{ position: "relative", width: "1280px", height: "720px" }}>
@@ -303,6 +338,8 @@ const VideoWithBoundingBox = () => {
           ref={videoRef}
           src={samplevid}
           controls
+          controlsList="nodownload"
+          disablePictureInPicture
           style={{ width: "100%", height: "100%" }}
         />
 

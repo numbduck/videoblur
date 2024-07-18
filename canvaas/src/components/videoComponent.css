@@ -1,0 +1,32 @@
+.video-controls {
+  display: flex;
+  flex-direction: column;
+  width: 20%;
+  margin:  auto; /* Added 20px margin for better spacing */
+  gap: 15px; /* Increased gap for better spacing */
+  padding: 10px; /* Added padding for inner spacing */
+  border: 1px solid #ccc; /* Added border */
+  border-radius: 8px; /* Rounded corners */
+  background-color: #f9f9f9; /* Light background color */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+}
+
+.video-controls button {
+  padding: 10px 20px; /* Added padding for buttons */
+  font-size: 16px; /* Increased font size for readability */
+  border: none; /* Removed default border */
+  border-radius: 4px; /* Rounded corners for buttons */
+  cursor: pointer; /* Pointer cursor on hover */
+  background-color: #007bff; /* Blue background color */
+  color: white; /* White text color */
+  transition: background-color 0.3s; /* Smooth transition for hover effect */
+}
+
+.video-controls button:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+.video-controls button:disabled {
+  background-color: #cccccc; /* Grey background for disabled buttons */
+  cursor: not-allowed; /* Not-allowed cursor for disabled buttons */
+}
